@@ -1,0 +1,5 @@
+{
+  "name": "Calculadoras de Acidentes de Trabalho",
+  "description": "Uma aplicação para juízes e advogados calcularem pensões e indemnizações resultantes de acidentes de trabalho em Portugal.",
+  "requestFramePermissions": []
+}
