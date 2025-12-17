@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { RATE_TABLE, IAS_TABLE, PENSION_UPDATE_COEFFICIENTS } from './constants';
 import { numberToWordsPT } from './utils/numberToWordsPT';
 
@@ -1325,6 +1325,364 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
   );
 };
 
+// --- NEW: Fatal Accident Calculator ---
+
+interface FatalAccidentFormData {
+  deceasedName: string;
+  annualRemuneration: string;
+  yearOfDeath: string;
+  agravatedResponsibility: boolean;
+  hasSpouse: boolean;
+  spouseScenario: 'under_retirement' | 'over_retirement';
+  hasExSpouse: boolean;
+  exSpouseAlimentos: string;
+  childrenCount: string;
+  isDoubleOrphan: boolean;
+  ascendantsCount: string;
+  ascendantsScenario: 'concurent' | 'alone_under' | 'alone_over';
+  funeralExpenses: string;
+  isTranslation: boolean;
+}
+
+const initialFatalFormData: FatalAccidentFormData = {
+  deceasedName: '',
+  annualRemuneration: '',
+  yearOfDeath: '2025',
+  agravatedResponsibility: false,
+  hasSpouse: false,
+  spouseScenario: 'under_retirement',
+  hasExSpouse: false,
+  exSpouseAlimentos: '',
+  childrenCount: '0',
+  isDoubleOrphan: false,
+  ascendantsCount: '0',
+  ascendantsScenario: 'concurent',
+  funeralExpenses: '',
+  isTranslation: false,
+};
+
+interface BeneficiaryPension {
+  name: string;
+  standardPercentage: number;
+  calculatedValue: number;
+}
+
+interface FatalResults {
+  iasValue: number;
+  pensions: BeneficiaryPension[];
+  totalPensionValue: number;
+  deathSubsidy: number;
+  funeralSubsidy: number;
+  remicaoSpouse: number;
+  reversaoFAT: number;
+}
+
+const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [formData, setFormData] = useState<FatalAccidentFormData>(initialFatalFormData);
+  const [results, setResults] = useState<FatalResults | null>(null);
+  const [error, setError] = useState('');
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const val = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    setFormData(prev => ({ ...prev, [name]: val }));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setFormData(initialFatalFormData);
+    setResults(null);
+    setError('');
+  }, []);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    const R = parseFloat(formData.annualRemuneration);
+    const iasYear = parseInt(formData.yearOfDeath);
+    const IAS = IAS_TABLE[iasYear];
+
+    if (isNaN(R) || !IAS) {
+      setError('Verifique a retribuição e o ano do acidente.');
+      return;
+    }
+
+    const pensions: BeneficiaryPension[] = [];
+    const unitIAS = 1.1 * IAS;
+
+    // 1. Calculate Standard Percentages
+    // Spouse
+    if (formData.hasSpouse) {
+      pensions.push({
+        name: 'Cônjuge / Unido de Facto',
+        standardPercentage: formData.spouseScenario === 'under_retirement' ? 0.30 : 0.40,
+        calculatedValue: 0
+      });
+    }
+
+    // Ex-Spouse
+    if (formData.hasExSpouse) {
+      const alimentos = parseFloat(formData.exSpouseAlimentos) || 0;
+      pensions.push({
+        name: 'Ex-Cônjuge (Limitado a Alimentos)',
+        standardPercentage: 0.30, // Base calculation but will be capped
+        calculatedValue: Math.min(alimentos, R * 0.30)
+      });
+    }
+
+    // Children
+    const cCount = parseInt(formData.childrenCount) || 0;
+    if (cCount > 0) {
+      let childBase = 0;
+      if (cCount === 1) childBase = 0.20;
+      else if (cCount === 2) childBase = 0.40;
+      else childBase = 0.50;
+
+      const orphanMultiplier = formData.isDoubleOrphan ? 2 : 1;
+      const totalChildPerc = Math.min(0.80, childBase * orphanMultiplier);
+
+      pensions.push({
+        name: `Filhos / Enteados (${cCount})`,
+        standardPercentage: totalChildPerc,
+        calculatedValue: 0
+      });
+    }
+
+    // Ascendants
+    const aCount = parseInt(formData.ascendantsCount) || 0;
+    if (aCount > 0) {
+      let aPerc = 0;
+      let label = 'Ascendentes';
+      if (formData.ascendantsScenario === 'concurent') {
+        aPerc = Math.min(0.30, 0.10 * aCount);
+        label += ' (Concorrendo)';
+      } else {
+        const base = formData.ascendantsScenario === 'alone_under' ? 0.15 : 0.20;
+        aPerc = Math.min(0.80, base * aCount);
+        label += ' (Exclusividade)';
+      }
+      pensions.push({
+        name: label,
+        standardPercentage: aPerc,
+        calculatedValue: 0
+      });
+    }
+
+    // 2. Distribute R values
+    let totalStandardPerc = pensions.reduce((acc, p) => acc + p.standardPercentage, 0);
+    
+    // Total caps
+    const totalPensionBase = formData.agravatedResponsibility ? 1.0 : Math.min(0.80, totalStandardPerc);
+    const finalTotalValue = R * totalPensionBase;
+
+    pensions.forEach(p => {
+        if (p.name.includes('Ex-Cônjuge')) return; // Already calculated with foods limit
+        
+        // Split proportional to standard percentages
+        // Note: For aggravated fault, we split 100% R by weights of Arts 59-61
+        const weight = p.standardPercentage / (totalStandardPerc || 1);
+        p.calculatedValue = finalTotalValue * weight;
+    });
+
+    // Subsidies
+    const deathSubsidy = 12 * unitIAS;
+    const funeralCost = parseFloat(formData.funeralExpenses) || 0;
+    const funeralLimit = (formData.isTranslation ? 8 : 4) * unitIAS;
+    const funeralSubsidy = Math.min(funeralCost, funeralLimit);
+
+    // One-offs
+    const spousePension = pensions.find(p => p.name.includes('Cônjuge'))?.calculatedValue || 0;
+    const remicaoSpouse = spousePension * 3;
+    const reversaoFAT = pensions.length === 0 ? R * 3 : 0;
+
+    setResults({
+      iasValue: IAS,
+      pensions,
+      totalPensionValue: finalTotalValue,
+      deathSubsidy,
+      funeralSubsidy,
+      remicaoSpouse,
+      reversaoFAT
+    });
+
+  }, [formData]);
+
+  const formatCurrency = (v: number) => v.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+
+  return (
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
+      <BackButton onBack={onBack} />
+      <header className="text-center mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Cálculo por Morte</h1>
+        <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho - Pensões e Subsídios</p>
+      </header>
+
+      <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputGroup label="Nome do Sinistrado" id="deceasedName" name="deceasedName" value={formData.deceasedName} onChange={handleInputChange} placeholder="Nome" />
+            <InputGroup label="Retribuição Anual (€)" id="annualRemuneration" name="annualRemuneration" type="number" value={formData.annualRemuneration} onChange={handleInputChange} placeholder="Ex: 21000" />
+            <div className="flex flex-col">
+              <label className="mb-2 font-semibold text-slate-300">Ano da Morte</label>
+              <select name="yearOfDeath" value={formData.yearOfDeath} onChange={handleInputChange} className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-50 focus:ring-2 focus:ring-blue-500">
+                {Object.keys(IAS_TABLE).reverse().map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center space-x-3 mt-8">
+              <input type="checkbox" id="agravatedResponsibility" name="agravatedResponsibility" checked={formData.agravatedResponsibility} onChange={handleInputChange} className="h-5 w-5 text-blue-600 bg-slate-700 border-slate-600 rounded" />
+              <label htmlFor="agravatedResponsibility" className="font-semibold text-slate-300">Responsabilidade Agravada (Culpa Empregador)</label>
+            </div>
+          </div>
+
+          <div className="space-y-6 border-t border-slate-700 pt-6">
+            <h3 className="text-xl font-bold text-slate-200">Beneficiários</h3>
+            
+            {/* Spouse */}
+            <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+              <div className="flex items-center space-x-3 mb-4">
+                <input type="checkbox" name="hasSpouse" checked={formData.hasSpouse} onChange={handleInputChange} className="h-4 w-4" id="chkSpouse" />
+                <label htmlFor="chkSpouse" className="font-semibold text-slate-200">Cônjuge ou Unido de Facto</label>
+              </div>
+              {formData.hasSpouse && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 ml-7 animate-fade-in">
+                  <div className="flex items-center space-x-2">
+                    <input type="radio" name="spouseScenario" value="under_retirement" checked={formData.spouseScenario === 'under_retirement'} onChange={handleInputChange} id="sp_under" />
+                    <label htmlFor="sp_under" className="text-slate-400 text-sm">Até idade de reforma</label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input type="radio" name="spouseScenario" value="over_retirement" checked={formData.spouseScenario === 'over_retirement'} onChange={handleInputChange} id="sp_over" />
+                    <label htmlFor="sp_over" className="text-slate-400 text-sm">Após reforma / Incap. &gt; 75%</label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Ex-Spouse */}
+            <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+              <div className="flex items-center space-x-3 mb-4">
+                <input type="checkbox" name="hasExSpouse" checked={formData.hasExSpouse} onChange={handleInputChange} className="h-4 w-4" id="chkExSpouse" />
+                <label htmlFor="chkExSpouse" className="font-semibold text-slate-200">Ex-Cônjuge (Com Alimentos)</label>
+              </div>
+              {formData.hasExSpouse && (
+                <div className="ml-7 animate-fade-in">
+                  <InputGroup label="Valor dos Alimentos Fixados (€)" id="exSpouseAlimentos" name="exSpouseAlimentos" type="number" value={formData.exSpouseAlimentos} onChange={handleInputChange} placeholder="Valor anual" />
+                </div>
+              )}
+            </div>
+
+            {/* Children */}
+            <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <InputGroup label="Nº de Filhos / Enteados" id="childrenCount" name="childrenCount" type="number" value={formData.childrenCount} onChange={handleInputChange} min="0" />
+                <div className="flex items-center space-x-3 mt-8">
+                  <input type="checkbox" id="isDoubleOrphan" name="isDoubleOrphan" checked={formData.isDoubleOrphan} onChange={handleInputChange} className="h-4 w-4" />
+                  <label htmlFor="isDoubleOrphan" className="text-slate-300">Órfãos de Pai e Mãe</label>
+                </div>
+              </div>
+            </div>
+
+            {/* Ascendants */}
+            <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+               <InputGroup label="Nº de Ascendentes / Outros" id="ascendantsCount" name="ascendantsCount" type="number" value={formData.ascendantsCount} onChange={handleInputChange} min="0" />
+               {parseInt(formData.ascendantsCount) > 0 && (
+                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4 ml-2 animate-fade-in">
+                    <div className="flex items-center space-x-2">
+                      <input type="radio" name="ascendantsScenario" value="concurent" checked={formData.ascendantsScenario === 'concurent'} onChange={handleInputChange} id="asc_c" />
+                      <label htmlFor="asc_c" className="text-slate-400 text-sm">Concorrendo</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="radio" name="ascendantsScenario" value="alone_under" checked={formData.ascendantsScenario === 'alone_under'} onChange={handleInputChange} id="asc_u" />
+                      <label htmlFor="asc_u" className="text-slate-400 text-sm">Sozinho (&lt; Reforma)</label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="radio" name="ascendantsScenario" value="alone_over" checked={formData.ascendantsScenario === 'alone_over'} onChange={handleInputChange} id="asc_o" />
+                      <label htmlFor="asc_o" className="text-slate-400 text-sm">Sozinho (&gt; Reforma)</label>
+                    </div>
+                 </div>
+               )}
+            </div>
+          </div>
+
+          <div className="space-y-6 border-t border-slate-700 pt-6">
+            <h3 className="text-xl font-bold text-slate-200">Despesas e Subsídios</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <InputGroup label="Despesas de Funeral (€)" id="funeralExpenses" name="funeralExpenses" type="number" value={formData.funeralExpenses} onChange={handleInputChange} placeholder="Valor total dos gastos" />
+              <div className="flex items-center space-x-3 mt-8">
+                <input type="checkbox" id="isTranslation" name="isTranslation" checked={formData.isTranslation} onChange={handleInputChange} className="h-5 w-5" />
+                <label htmlFor="isTranslation" className="font-semibold text-slate-300">Inclui Trasladação</label>
+              </div>
+            </div>
+          </div>
+
+          {error && <p className="text-red-400 bg-red-900/50 p-3 rounded-lg text-center">{error}</p>}
+          
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6 border-t border-slate-700">
+            <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-all">
+              Calcular Prestações
+            </button>
+            <button type="button" onClick={handleReset} className="w-full sm:w-auto bg-slate-600 text-slate-200 font-semibold py-3 px-8 rounded-lg hover:bg-slate-500 transition-all">
+              Limpar
+            </button>
+          </div>
+        </form>
+      </main>
+
+      {results && (
+        <section className="mt-10 bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700 animate-fade-in">
+          <h2 className="text-2xl font-bold text-slate-100 text-center mb-6">Resultados Detalhados</h2>
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <ResultCard label="Subsídio por Morte" value={formatCurrency(results.deathSubsidy)} />
+              <ResultCard label="Subsídio Funeral" value={formatCurrency(results.funeralSubsidy)} />
+            </div>
+
+            <div className="bg-slate-900 p-6 rounded-lg border border-slate-700">
+              <h4 className="text-slate-400 text-sm uppercase tracking-wider mb-4 font-bold">Distribuição das Pensões Anuais</h4>
+              <div className="space-y-3">
+                {results.pensions.map((p, idx) => (
+                  <div key={idx} className="flex justify-between border-b border-slate-800 pb-2">
+                    <span className="text-slate-300">{p.name}</span>
+                    <span className="text-blue-400 font-bold">{formatCurrency(p.calculatedValue)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between pt-2 text-lg">
+                  <span className="text-slate-100 font-bold">Total Pensão Anual (14 meses)</span>
+                  <span className="text-green-400 font-extrabold">{formatCurrency(results.totalPensionValue)}</span>
+                </div>
+              </div>
+            </div>
+
+            {(results.remicaoSpouse > 0 || results.reversaoFAT > 0) && (
+              <div className="bg-slate-900 p-6 rounded-lg border border-slate-700 border-dashed">
+                <h4 className="text-slate-400 text-sm uppercase tracking-wider mb-4 font-bold">Prestações Únicas Potenciais</h4>
+                <div className="space-y-3">
+                  {results.remicaoSpouse > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Remição por novo casamento (Cônjuge)</span>
+                      <span className="text-slate-100">{formatCurrency(results.remicaoSpouse)}</span>
+                    </div>
+                  )}
+                  {results.reversaoFAT > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Reversão para o FAT (Sem beneficiários)</span>
+                      <span className="text-slate-100">{formatCurrency(results.reversaoFAT)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <p className="text-xs text-slate-500 text-center">
+              * Base de cálculo: {formData.agravatedResponsibility ? '100%' : '80%'} da Retribuição Anual Ilíquida (NLAT). IAS {formData.yearOfDeath}: {formatCurrency(results.iasValue)}.
+            </p>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
 // --- MAIN APP (ROUTER) ---
 
 type CalculatorInfo = {
@@ -1377,6 +1735,13 @@ const calculators: CalculatorInfo[] = [
     shortTitle: 'Atualização Anual',
     description: 'Aplicação cronológica de coeficientes de atualização desde 1999.',
     component: PensionUpdateCalculator
+  },
+  { 
+    id: 'fatal-accident', 
+    title: 'Acidente Mortal',
+    shortTitle: 'Pensões por Morte',
+    description: 'Cálculo de pensões de sobrevivência, subsídios e despesas de funeral.',
+    component: FatalAccidentCalculator
   },
 ];
 
