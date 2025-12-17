@@ -1,5 +1,6 @@
+
 import React, { useState, useCallback } from 'react';
-import { RATE_TABLE, IAS_TABLE } from './constants';
+import { RATE_TABLE, IAS_TABLE, PENSION_UPDATE_COEFFICIENTS } from './constants';
 import { numberToWordsPT } from './utils/numberToWordsPT';
 
 // --- HELPER COMPONENTS (used by calculators) ---
@@ -133,18 +134,6 @@ const BackButton: React.FC<{ onBack: () => void }> = ({ onBack }) => (
   </button>
 );
 
-const PlaceholderCalculator: React.FC<{ title: string; onBack: () => void; }> = ({ title, onBack }) => (
-  <div className="w-full max-w-3xl mx-auto animate-fade-in">
-    <BackButton onBack={onBack} />
-    <main className="bg-slate-800 p-8 sm:p-10 rounded-2xl shadow-lg border border-slate-700 text-center">
-      <h1 className="text-2xl font-bold text-slate-100">{title}</h1>
-      <p className="mt-4 text-slate-400 text-lg">
-        Esta calculadora está em desenvolvimento e estará disponível em breve.
-      </p>
-    </main>
-  </div>
-);
-
 interface FormData {
   workerName: string;
   annualRemuneration: string;
@@ -273,11 +262,11 @@ const PartialPermanentIncapacityCalculator: React.FC<{ onBack: () => void; }> = 
     date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-fade-in">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
       <BackButton onBack={onBack} />
       <header className="text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Calculadora de Incapacidade Permanente Parcial</h1>
-        <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Incapacidade Permanente Parcial</h1>
+        <p className="text-slate-400 mt-2 text-lg">Cálculo de Pensão e Remição</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
         <form onSubmit={handleSubmit} noValidate>
@@ -453,10 +442,10 @@ const AbsolutePermanentTotalIncapacityCalculator: React.FC<{ onBack: () => void;
     date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-fade-in">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
       <BackButton onBack={onBack} />
       <header className="text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Calculadora de Incapacidade Permanente Absoluta para todo e qualquer trabalho</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">IPP Absoluta (Qualquer Trabalho)</h1>
         <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
@@ -633,10 +622,10 @@ const AbsoluteHabitualWorkIncapacityCalculator: React.FC<{ onBack: () => void; }
     date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-fade-in">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
       <BackButton onBack={onBack} />
       <header className="text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Calculadora de Incapacidade Permanente Absoluta para o trabalho habitual</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">IPP Absoluta (Trabalho Habitual)</h1>
         <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
@@ -802,7 +791,7 @@ const TemporaryIncapacityCalculator: React.FC<{ onBack: () => void; }> = ({ onBa
     const { workerName, annualRemuneration, periods } = formData;
     
     if (!workerName || !annualRemuneration || periods.some(p => !p.startDate || !p.endDate)) {
-      setError('Os campos de nome, retribuição e todas as datas de período são obrigatórios.');
+      setError('Os campos de nome, retribuição e todas as das de período são obrigatórios.');
       return;
     }
     
@@ -873,11 +862,11 @@ const TemporaryIncapacityCalculator: React.FC<{ onBack: () => void; }> = ({ onBa
     date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-fade-in">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
       <BackButton onBack={onBack} />
       <header className="text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Calculadora de Incapacidade Temporária</h1>
-        <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Incapacidade Temporária</h1>
+        <p className="text-slate-400 mt-2 text-lg">Absoluta e Parcial</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
         <form onSubmit={handleSubmit} noValidate>
@@ -1100,11 +1089,11 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
     value.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-fade-in">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
       <BackButton onBack={onBack} />
       <header className="text-center mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Calculadora do Subsídio por Situações de Elevada Incapacidade Permanente</h1>
-        <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Subsídio de Elevada Incapacidade</h1>
+        <p className="text-slate-400 mt-2 text-lg">Cálculo Baseado no IAS</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
         <form onSubmit={handleSubmit} noValidate>
@@ -1185,12 +1174,163 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
   );
 };
 
+// --- NEW: Pension Update Calculator ---
+
+interface PensionUpdateYearResult {
+  year: number;
+  coefficient: number;
+  value: number;
+  isInitial: boolean;
+}
+
+const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [initialValue, setInitialValue] = useState<string>('');
+  const [fixingYear, setFixingYear] = useState<string>('');
+  const [results, setResults] = useState<PensionUpdateYearResult[] | null>(null);
+  const [error, setError] = useState<string>('');
+
+  const handleReset = useCallback(() => {
+    setInitialValue('');
+    setFixingYear('');
+    setResults(null);
+    setError('');
+  }, []);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setResults(null);
+
+    const val = parseFloat(initialValue);
+    const year = parseInt(fixingYear);
+
+    if (isNaN(val) || isNaN(year)) {
+      setError('Por favor, insira valores válidos para a pensão e o ano.');
+      return;
+    }
+
+    if (year < 1999 || year > 2025) {
+      setError('O ano de fixação deve estar entre 1999 e 2025.');
+      return;
+    }
+
+    const yearlyResults: PensionUpdateYearResult[] = [];
+    let currentVal = val;
+
+    // First line: Initial year
+    yearlyResults.push({
+      year,
+      coefficient: 0,
+      value: currentVal,
+      isInitial: true
+    });
+
+    // Subsequent years: Update from Year + 1
+    const currentYear = 2025;
+    for (let y = year + 1; y <= currentYear; y++) {
+      const coeff = PENSION_UPDATE_COEFFICIENTS[y] || 0;
+      currentVal = currentVal * (1 + coeff / 100);
+      yearlyResults.push({
+        year: y,
+        coefficient: coeff,
+        value: currentVal,
+        isInitial: false
+      });
+    }
+
+    setResults(yearlyResults);
+  }, [initialValue, fixingYear]);
+
+  const formatCurrency = (value: number) => 
+    value.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+
+  return (
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
+      <BackButton onBack={onBack} />
+      <header className="text-center mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Atualização de Pensões</h1>
+        <p className="text-slate-400 mt-2 text-lg">Cálculo cronológico de coeficientes anuais</p>
+      </header>
+
+      <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputGroup 
+              label="Valor Inicial da Pensão (€)" 
+              id="initialValue" 
+              type="number" 
+              step="0.01" 
+              value={initialValue} 
+              onChange={(e) => setInitialValue(e.target.value)} 
+              placeholder="Ex: 1000" 
+            />
+            <InputGroup 
+              label="Ano de Fixação" 
+              id="fixingYear" 
+              type="number" 
+              min="1999" 
+              max="2025" 
+              value={fixingYear} 
+              onChange={(e) => setFixingYear(e.target.value)} 
+              placeholder="Ex: 2020" 
+            />
+          </div>
+          {error && <p className="text-red-400 bg-red-900/50 p-3 rounded-lg mt-6 text-center">{error}</p>}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8 pt-6 border-t border-slate-700">
+            <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-all">
+              Calcular Atualizações
+            </button>
+            <button type="button" onClick={handleReset} className="w-full sm:w-auto bg-slate-600 text-slate-200 font-semibold py-3 px-8 rounded-lg hover:bg-slate-500 transition-all">
+              Limpar
+            </button>
+          </div>
+        </form>
+      </main>
+
+      {results && (
+        <section className="mt-10 bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700 animate-fade-in overflow-hidden">
+          <h2 className="text-2xl font-bold text-slate-100 text-center mb-6">Progressão Anual da Pensão</h2>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-700 text-slate-400 text-sm uppercase tracking-wider">
+                  <th className="py-3 px-4">Ano</th>
+                  <th className="py-3 px-4">Coeficiente</th>
+                  <th className="py-3 px-4 text-right">Valor da Pensão</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r) => (
+                  <tr key={r.year} className={`border-b border-slate-700/50 transition-colors hover:bg-slate-750 ${r.isInitial ? 'bg-slate-900/40 font-semibold' : ''}`}>
+                    <td className="py-3 px-4 text-slate-200">{r.year} {r.isInitial && <span className="text-[10px] ml-2 px-1.5 py-0.5 bg-blue-900 text-blue-200 rounded">Fixação</span>}</td>
+                    <td className="py-3 px-4 text-slate-400">{r.isInitial ? '-' : `${r.coefficient.toLocaleString('pt-PT')}%`}</td>
+                    <td className={`py-3 px-4 text-right font-mono ${r.year === 2025 ? 'text-blue-400 font-bold' : 'text-slate-200'}`}>
+                      {formatCurrency(r.value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-slate-700 bg-slate-900/50 -mx-6 -mb-6 p-6">
+            <p className="text-slate-300 text-center">
+              O valor da pensão em <strong className="text-white">2025</strong> é de <strong className="text-blue-400 text-xl">{formatCurrency(results[results.length - 1].value)}</strong>.
+            </p>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
 
 // --- MAIN APP (ROUTER) ---
 
 type CalculatorInfo = {
   id: string;
   title: string;
+  shortTitle: string;
   description: string;
   component: React.FC<{ onBack: () => void; title?: string }>;
 };
@@ -1199,69 +1339,83 @@ const calculators: CalculatorInfo[] = [
   { 
     id: 'partial-perm', 
     title: 'Incapacidade Permanente Parcial',
-    description: 'Calcula a pensão anual, valor em dívida e capital de remição.',
+    shortTitle: 'IPP Parcial',
+    description: 'Cálculo de pensão anual, capital de remição e retroativos.',
     component: PartialPermanentIncapacityCalculator 
   },
   { 
     id: 'abs-perm-total', 
-    title: 'Incapacidade Permanente Absoluta para todo e qualquer trabalho',
-    description: 'Calcula a pensão para incapacidade absoluta para todo o trabalho.',
+    title: 'IPP Absoluta (Qualquer Trabalho)',
+    shortTitle: 'Absoluta Total',
+    description: 'Cálculo para incapacidade absoluta para todo e qualquer trabalho.',
     component: AbsolutePermanentTotalIncapacityCalculator 
   },
   { 
     id: 'abs-perm-habitual', 
-    title: 'Incapacidade Permanente Absoluta para o trabalho habitual',
-    description: 'Calcula a pensão para incapacidade absoluta para o trabalho habitual.',
+    title: 'IPP Absoluta (Trabalho Habitual)',
+    shortTitle: 'Absoluta Habitual',
+    description: 'Cálculo para incapacidade absoluta para o trabalho habitual do sinistrado.',
     component: AbsoluteHabitualWorkIncapacityCalculator
   },
   { 
     id: 'temp-incapacity', 
-    title: 'Incapacidade Temporária (Absoluta e Parcial)',
-    description: 'Calcula a indemnização para múltiplos períodos de incapacidade.',
+    title: 'Incapacidade Temporária',
+    shortTitle: 'Indemnização ITA/ITP',
+    description: 'Indemnizações por múltiplos períodos de ITA ou ITP.',
     component: TemporaryIncapacityCalculator
   },
   { 
     id: 'high-incapacity-subsidy', 
-    title: 'Subsídio por situações de elevada incapacidade permanente',
-    description: 'Calcula o subsídio para incapacidades permanentes elevadas.',
+    title: 'Subsídio de Elevada Incapacidade',
+    shortTitle: 'Subsídio IAS',
+    description: 'Subsídio por situações de elevada incapacidade permanente.',
     component: HighIncapacitySubsidyCalculator
+  },
+  { 
+    id: 'pension-update', 
+    title: 'Atualização de Pensões',
+    shortTitle: 'Atualização Anual',
+    description: 'Aplicação cronológica de coeficientes de atualização desde 1999.',
+    component: PensionUpdateCalculator
   },
 ];
 
 const App: React.FC = () => {
   const [activeCalculatorId, setActiveCalculatorId] = useState<string>('');
 
-  const handleCalculatorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setActiveCalculatorId(e.target.value);
-  };
-
   const activeCalculator = calculators.find(c => c.id === activeCalculatorId);
 
   return (
-    <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-8 font-sans">
+    <div className="min-h-screen flex flex-col items-center p-4 sm:p-6 lg:p-10 font-sans max-w-7xl mx-auto w-full">
       {!activeCalculator ? (
-        <div className="w-full max-w-xl mx-auto text-center animate-fade-in">
-          <header className="mb-10">
-            <h1 className="text-4xl sm:text-5xl font-bold text-slate-100">Calculadoras</h1>
-            <p className="text-slate-400 mt-3 text-xl">Acidentes de Trabalho</p>
+        <div className="w-full animate-fade-in">
+          <header className="mb-12 text-center">
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-100 tracking-tight">Portal do Juiz</h1>
+            <p className="text-slate-400 mt-4 text-xl">Calculadoras de Acidentes de Trabalho</p>
           </header>
-          <div className="w-full">
-            <label htmlFor="calculator-select" className="sr-only">Selecione uma calculadora</label>
-            <select
-              id="calculator-select"
-              value={activeCalculatorId}
-              onChange={handleCalculatorChange}
-              className="w-full p-4 bg-slate-800 border border-slate-700 rounded-lg text-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Selecione uma calculadora"
-            >
-              <option value="" disabled>Selecione uma calculadora...</option>
-              {calculators.map((calc) => (
-                <option key={calc.id} value={calc.id}>
-                  {calc.title}
-                </option>
-              ))}
-            </select>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {calculators.map((calc) => (
+              <button
+                key={calc.id}
+                onClick={() => setActiveCalculatorId(calc.id)}
+                className="group flex flex-col p-6 bg-slate-800 border border-slate-700 rounded-2xl text-left transition-all duration-300 hover:bg-slate-750 hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-400">{calc.shortTitle}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500 group-hover:text-blue-400 transition-colors" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                </div>
+                <h2 className="text-xl font-bold text-slate-100 mb-2 group-hover:text-white">{calc.title}</h2>
+                <p className="text-slate-400 text-sm leading-relaxed">{calc.description}</p>
+              </button>
+            ))}
           </div>
+          
+          <footer className="mt-16 text-center text-slate-500 text-sm">
+            <p>Portugal • Cálculo de Pensões Anuais e Capitais de Remição</p>
+          </footer>
         </div>
       ) : (
         <activeCalculator.component 
