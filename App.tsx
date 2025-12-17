@@ -5,6 +5,23 @@ import { numberToWordsPT } from './utils/numberToWordsPT';
 
 // --- HELPER COMPONENTS (used by calculators) ---
 
+interface CalculationExplanationProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+const CalculationExplanation: React.FC<CalculationExplanationProps> = ({ title, children }) => (
+  <div className="mb-8 p-5 bg-slate-800/50 border-l-4 border-blue-500 rounded-r-xl text-slate-300 text-sm leading-relaxed shadow-inner">
+    <div className="flex items-center mb-2 text-blue-400 font-bold uppercase tracking-wider text-xs">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Metodologia e Base Legal: {title}
+    </div>
+    {children}
+  </div>
+);
+
 interface InputGroupProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   id: string;
@@ -269,6 +286,9 @@ const PartialPermanentIncapacityCalculator: React.FC<{ onBack: () => void; }> = 
         <p className="text-slate-400 mt-2 text-lg">Cálculo de Pensão e Remição</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Pensão IPP Parcial">
+          <p>Nos termos do Art. 48.º, n.º 3, al. c) da NLAT, a pensão anual é calculada como <strong>70% da retribuição anual base</strong>, multiplicada pela percentagem de incapacidade (IPP). Para o capital de remição, aplica-se a tabela da Portaria 11/2000, multiplicando a pensão anual pelo coeficiente correspondente à idade do sinistrado na data da alta.</p>
+        </CalculationExplanation>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
@@ -449,6 +469,9 @@ const AbsolutePermanentTotalIncapacityCalculator: React.FC<{ onBack: () => void;
         <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Incapacidade Absoluta Total">
+          <p>De acordo com o Art. 48.º, n.º 3, al. a) da NLAT, a pensão anual é de <strong>80% da retribuição</strong>, acrescida de 10% por cada pessoa a cargo (até ao limite de 100% da retribuição).</p>
+        </CalculationExplanation>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
@@ -629,6 +652,9 @@ const AbsoluteHabitualWorkIncapacityCalculator: React.FC<{ onBack: () => void; }
         <p className="text-slate-400 mt-2 text-lg">Acidentes de Trabalho</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Incapacidade Absoluta Habitual">
+          <p>Nos termos do Art. 48.º, n.º 3, al. b) da NLAT, a pensão anual situa-se entre <strong>50% e 70% da retribuição</strong>, atendendo à capacidade funcional residual para o exercício de outra profissão compatível. A fórmula interpolada é: 50% R + (IPP% x 20% R).</p>
+        </CalculationExplanation>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
@@ -869,6 +895,9 @@ const TemporaryIncapacityCalculator: React.FC<{ onBack: () => void; }> = ({ onBa
         <p className="text-slate-400 mt-2 text-lg">Absoluta e Parcial</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Indemnizações Temporárias">
+          <p>Nos termos do Art. 48.º, n.º 3, al. d) e e) da NLAT, a indemnização diária por incapacidade temporária absoluta (ITA) é de <strong>70% da retribuição diária</strong> nos primeiros 12 meses, subindo para <strong>75%</strong> após esse período. No caso de incapacidade temporária parcial (ITP), a indemnização é de 70% da redução da capacidade de ganho.</p>
+        </CalculationExplanation>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
@@ -1096,6 +1125,9 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
         <p className="text-slate-400 mt-2 text-lg">Cálculo Baseado no IAS</p>
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Subsídio por Elevada Incapacidade">
+          <p>Este subsídio, regulado pelo Art. 67.º da NLAT, é uma prestação paga de uma só vez. O montante baseia-se no valor do <strong>IAS (Indexante de Apoios Sociais)</strong> à data do acidente. Para incapacidade absoluta total, o valor é de 12 x (1,1 x IAS). Para incapacidade parcial (≥ 70%), o valor é proporcional à incapacidade fixada: (IAS x 12) x IPP% x 1,1.</p>
+        </CalculationExplanation>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
@@ -1253,6 +1285,9 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
       </header>
 
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Mecanismo de Atualização">
+          <p>As pensões por acidente de trabalho são atualizadas anualmente com base em coeficientes publicados pelo Governo. A primeira atualização ocorre no dia 1 de janeiro do ano seguinte ao da fixação. O cálculo é composto, incidindo cada atualização sobre o valor já atualizado do ano anterior.</p>
+        </CalculationExplanation>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputGroup 
@@ -1518,6 +1553,9 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
       </header>
 
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Morte do Sinistrado">
+          <p>As pensões por morte baseiam-se nos Artigos 59.º a 61.º da NLAT. O montante total não pode exceder <strong>80% da retribuição</strong>, exceto em casos de responsabilidade agravada do empregador, onde a pensão é igual à totalidade da retribuição (100% R). Os subsídios por morte e funeral são indexados ao IAS de 2007-2025.</p>
+        </CalculationExplanation>
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <InputGroup label="Nome do Sinistrado" id="deceasedName" name="deceasedName" value={formData.deceasedName} onChange={handleInputChange} placeholder="Nome" />
