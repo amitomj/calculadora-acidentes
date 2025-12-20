@@ -1793,8 +1793,7 @@ const App: React.FC = () => {
       {!activeCalculator ? (
         <div className="w-full animate-fade-in">
           <header className="mb-12 text-center">
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-100 tracking-tight">Portal do Juiz</h1>
-            <p className="text-slate-400 mt-4 text-xl">Calculadoras de Acidentes de Trabalho</p>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-100 tracking-tight">Calculadora: acidentes de trabalho</h1>
           </header>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
