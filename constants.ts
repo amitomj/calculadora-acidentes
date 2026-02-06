@@ -100,6 +100,7 @@ export const RATE_TABLE: Record<number, number> = {
 };
 
 export const IAS_TABLE: Record<number, number> = {
+  2026: 537.13,
   2025: 522.50,
   2024: 509.26,
   2023: 480.43,

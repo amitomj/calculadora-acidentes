@@ -1082,7 +1082,7 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
     const iasValue = IAS_TABLE[year];
 
     if (!iasValue) {
-        setError(`O valor do IAS para o ano de ${year} não está disponível. Por favor, insira uma data entre 2007 e 2025.`);
+        setError(`O valor do IAS para o ano de ${year} não está disponível. Por favor, insira uma data entre 2007 e 2026.`);
         return;
     }
 
@@ -1382,7 +1382,7 @@ interface FatalAccidentFormData {
 const initialFatalFormData: FatalAccidentFormData = {
   deceasedName: '',
   annualRemuneration: '',
-  yearOfDeath: '2025',
+  yearOfDeath: '2026',
   agravatedResponsibility: false,
   hasSpouse: false,
   spouseScenario: 'under_retirement',
@@ -1554,7 +1554,7 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
 
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
         <CalculationExplanation title="Morte do Sinistrado">
-          <p>As pensões por morte baseiam-se nos Artigos 59.º a 61.º da NLAT. O montante total não pode exceder <strong>80% da retribuição</strong>, exceto em casos de responsabilidade agravada do empregador, onde a pensão é igual à totalidade da retribuição (100% R). Os subsídios por morte e funeral são indexados ao IAS de 2007-2025.</p>
+          <p>As pensões por morte baseiam-se nos Artigos 59.º a 61.º da NLAT. O montante total não pode exceder <strong>80% da retribuição</strong>, exceto em casos de responsabilidade agravada do empregador, onde a pensão é igual à totalidade da retribuição (100% R). Os subsídios por morte e funeral são indexados ao IAS de 2007-2026.</p>
         </CalculationExplanation>
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1598,7 +1598,7 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
             {/* Ex-Spouse */}
             <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
               <div className="flex items-center space-x-3 mb-4">
-                <input type="checkbox" name="hasExSpouse" checked={formData.hasExSpouse} onChange={handleInputChange} className="h-4 w-4" id="chkExSpouse" />
+                <input type="checkbox" name="hasExSpouse" checked={formData.hasExExSpouse} onChange={handleInputChange} className="h-4 w-4" id="chkExSpouse" />
                 <label htmlFor="chkExSpouse" className="font-semibold text-slate-200">Ex-Cônjuge (Com Alimentos)</label>
               </div>
               {formData.hasExSpouse && (
