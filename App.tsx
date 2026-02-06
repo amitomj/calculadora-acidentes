@@ -385,7 +385,7 @@ const AbsolutePermanentTotalIncapacityCalculator: React.FC<{ onBack: () => void;
     const birth = new Date(birthDate);
 
     if (isNaN(remuneration) || isNaN(discharge.getTime()) || isNaN(birth.getTime())) {
-      setError('Por favor, verifique os valores numéricos e as datas.');
+      setError('Por favor, verifique os valores numéricos e as das.');
       return;
     }
      if (remuneration <= 0) {
@@ -1241,8 +1241,8 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
       return;
     }
 
-    if (year < 1999 || year > 2025) {
-      setError('O ano de fixação deve estar entre 1999 e 2025.');
+    if (year < 1999 || year > 2026) {
+      setError('O ano de fixação deve estar entre 1999 e 2026.');
       return;
     }
 
@@ -1258,7 +1258,7 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
     });
 
     // Subsequent years: Update from Year + 1
-    const currentYear = 2025;
+    const currentYear = 2026;
     for (let y = year + 1; y <= currentYear; y++) {
       const coeff = PENSION_UPDATE_COEFFICIENTS[y] || 0;
       currentVal = currentVal * (1 + coeff / 100);
@@ -1304,7 +1304,7 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
               id="fixingYear" 
               type="number" 
               min="1999" 
-              max="2025" 
+              max="2026" 
               value={fixingYear} 
               onChange={(e) => setFixingYear(e.target.value)} 
               placeholder="Ex: 2020" 
@@ -1340,7 +1340,7 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
                   <tr key={r.year} className={`border-b border-slate-700/50 transition-colors hover:bg-slate-750 ${r.isInitial ? 'bg-slate-900/40 font-semibold' : ''}`}>
                     <td className="py-3 px-4 text-slate-200">{r.year} {r.isInitial && <span className="text-[10px] ml-2 px-1.5 py-0.5 bg-blue-900 text-blue-200 rounded">Fixação</span>}</td>
                     <td className="py-3 px-4 text-slate-400">{r.isInitial ? '-' : `${r.coefficient.toLocaleString('pt-PT')}%`}</td>
-                    <td className={`py-3 px-4 text-right font-mono ${r.year === 2025 ? 'text-blue-400 font-bold' : 'text-slate-200'}`}>
+                    <td className={`py-3 px-4 text-right font-mono ${r.year === 2026 ? 'text-blue-400 font-bold' : 'text-slate-200'}`}>
                       {formatCurrency(r.value)}
                     </td>
                   </tr>
@@ -1351,7 +1351,7 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
 
           <div className="mt-8 pt-6 border-t border-slate-700 bg-slate-900/50 -mx-6 -mb-6 p-6">
             <p className="text-slate-300 text-center">
-              O valor da pensão em <strong className="text-white">2025</strong> é de <strong className="text-blue-400 text-xl">{formatCurrency(results[results.length - 1].value)}</strong>.
+              O valor da pensão em <strong className="text-white">2026</strong> é de <strong className="text-blue-400 text-xl">{formatCurrency(results[results.length - 1].value)}</strong>.
             </p>
           </div>
         </section>
@@ -1765,7 +1765,7 @@ const calculators: CalculatorInfo[] = [
     title: 'Subsídio de Elevada Incapacidade',
     shortTitle: 'Subsídio IAS',
     description: 'Subsídio por situações de elevada incapacidade permanente.',
-    component: HighIncapacitySubsidyCalculator
+    component: HighIncapacitySubsidyCalculator 
   },
   { 
     id: 'pension-update', 

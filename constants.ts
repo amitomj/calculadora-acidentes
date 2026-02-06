@@ -149,4 +149,5 @@ export const PENSION_UPDATE_COEFFICIENTS: Record<number, number> = {
   2023: 8.4,
   2024: 6,
   2025: 2.6,
+  2026: 2.8,
 };
