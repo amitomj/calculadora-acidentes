@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { RATE_TABLE, IAS_TABLE, PENSION_UPDATE_COEFFICIENTS } from './constants';
+import { RATE_TABLE, IAS_TABLE, RMMG_TABLE, PENSION_UPDATE_COEFFICIENTS } from './constants';
 import { numberToWordsPT } from './utils/numberToWordsPT';
 
 // --- HELPER COMPONENTS (used by calculators) ---
@@ -242,7 +242,7 @@ const PartialPermanentIncapacityCalculator: React.FC<{ onBack: () => void; }> = 
     
     const rate = RATE_TABLE[ageForRate];
     if (!rate) {
-      setError(`Não foi encontrada uma taxa para a idade calculada de ${ageForRate} anos. Verifique as datas.`);
+      setError(`Não foi encontrada uma taxa para a idade calculada de ${ageForRate} anos. Verifique as das.`);
       return;
     }
 
@@ -702,7 +702,7 @@ const AbsoluteHabitualWorkIncapacityCalculator: React.FC<{ onBack: () => void; }
   );
 };
 
-// --- NEW: Unified Temporary Incapacity Calculator ---
+// --- Unified Temporary Incapacity Calculator ---
 
 type IncapacityType = 'absolute' | 'partial';
 
@@ -992,7 +992,7 @@ const TemporaryIncapacityCalculator: React.FC<{ onBack: () => void; }> = ({ onBa
   );
 };
 
-// --- NEW: High Incapacity Subsidy Calculator ---
+// --- High Incapacity Subsidy Calculator ---
 
 interface HighIncapacityFormData {
   workerName: string;
@@ -1221,7 +1221,7 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
   );
 };
 
-// --- NEW: Pension Update Calculator ---
+// --- Pension Update Calculator ---
 
 interface PensionUpdateYearResult {
   year: number;
@@ -1375,7 +1375,7 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
   );
 };
 
-// --- NEW: Fatal Accident Calculator ---
+// --- Fatal Accident Calculator ---
 
 interface FatalAccidentFormData {
   deceasedName: string;
@@ -1736,6 +1736,433 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
   );
 };
 
+// --- Third Party Assistance Calculator ---
+
+interface ThirdPartyFormData {
+    workerName: string;
+    dischargeDate: string;
+    weeklyHours: string;
+}
+
+const initialThirdPartyFormData: ThirdPartyFormData = {
+    workerName: '',
+    dischargeDate: '',
+    weeklyHours: '40',
+};
+
+interface ThirdPartyResults {
+    rmmgValue: number;
+    proportionalValue: number;
+    isReduced: boolean;
+    isIncreased: boolean;
+}
+
+const ThirdPartyAssistanceCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+    const [formData, setFormData] = useState<ThirdPartyFormData>(initialThirdPartyFormData);
+    const [results, setResults] = useState<ThirdPartyResults | null>(null);
+    const [error, setError] = useState('');
+
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }, []);
+
+    const handleReset = useCallback(() => {
+        setFormData(initialThirdPartyFormData);
+        setResults(null);
+        setError('');
+    }, []);
+
+    const handleSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        const discharge = new Date(formData.dischargeDate);
+        const hours = parseFloat(formData.weeklyHours);
+
+        if (isNaN(discharge.getTime()) || isNaN(hours)) {
+            setError('Verifique a data da alta e as horas de assistência.');
+            return;
+        }
+
+        const year = discharge.getFullYear();
+        const rmmg = RMMG_TABLE[year];
+
+        if (!rmmg) {
+            setError(`O valor da RMMG para o ano de ${year} não está disponível (2007-2026).`);
+            return;
+        }
+
+        const proportionalValue = (hours / 40) * rmmg;
+        
+        setResults({
+            rmmgValue: rmmg,
+            proportionalValue,
+            isReduced: hours < 40,
+            isIncreased: hours > 40
+        });
+
+    }, [formData]);
+
+    const formatCurrency = (v: number) => v.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+    const formatDate = (date: Date) => date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    return (
+        <div className="w-full max-w-4xl mx-auto animate-fade-in">
+            <BackButton onBack={onBack} />
+            <header className="text-center mb-8">
+                <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Assistência a Terceira Pessoa</h1>
+                <p className="text-slate-400 mt-2 text-lg">Artigo 54.º - Prestação Suplementar</p>
+            </header>
+
+            <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+                <CalculationExplanation title="Artigo 54.º - Prestação Suplementar">
+                    <p>A prestação suplementar da pensão para assistência a terceira pessoa é fixada em montante mensal e tem como referência a <strong>retribuição mínima mensal garantida (RMMG)</strong>. É devida desde o dia seguinte ao da alta. Caso a assistência seja inferior ou superior a 40 horas semanais, o valor é ajustado proporcionalmente.</p>
+                </CalculationExplanation>
+                <form onSubmit={handleSubmit} noValidate>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
+                        <InputGroup label="Data da Alta" id="dischargeDate" name="dischargeDate" type="date" value={formData.dischargeDate} onChange={handleInputChange} />
+                        <InputGroup label="Horas de Assistência Semanais" id="weeklyHours" name="weeklyHours" type="number" step="0.5" value={formData.weeklyHours} onChange={handleInputChange} placeholder="Base: 40 horas" />
+                    </div>
+                    {error && <p className="text-red-400 bg-red-900/50 p-3 rounded-lg mt-6 text-center">{error}</p>}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8 pt-6 border-t border-slate-700">
+                        <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-all">
+                            Calcular Prestação
+                        </button>
+                        <button type="button" onClick={handleReset} className="w-full sm:w-auto bg-slate-600 text-slate-200 font-semibold py-3 px-8 rounded-lg hover:bg-slate-500 transition-all">
+                            Limpar
+                        </button>
+                    </div>
+                </form>
+            </main>
+
+            {results && (
+                <section className="mt-10 bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700 animate-fade-in">
+                    <h2 className="text-2xl font-bold text-slate-100 text-center mb-6">Resultados do Cálculo</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+                        <ResultCard label="RMMG Base (40h)" value={formatCurrency(results.rmmgValue)} />
+                        <ResultCard label="Valor Proporcional" value={formatCurrency(results.proportionalValue)} />
+                    </div>
+                    <div className="mt-8 pt-6 border-t border-slate-700 bg-slate-900 p-6 rounded-lg text-slate-300 leading-relaxed">
+                        <p>
+                            A prestação suplementar para assistência a terceira pessoa a favor de <strong className="text-slate-100">{formData.workerName}</strong> é devida desde <strong className="text-slate-100">{formatDate(new Date(new Date(formData.dischargeDate).setDate(new Date(formData.dischargeDate).getDate() + 1)))}</strong>.
+                        </p>
+                        <p className="mt-4">
+                            {results.isReduced && (
+                                <span className="block italic text-blue-400">
+                                    Nota: Como a ajuda é inferior às 40 horas semanais, o valor mensal da RMMG de {formatCurrency(results.rmmgValue)} é reduzido proporcionalmente para {formatCurrency(results.proportionalValue)}.
+                                </span>
+                            )}
+                            {results.isIncreased && (
+                                <span className="block italic text-blue-400">
+                                    Nota: Como a ajuda é superior às 40 horas semanais, o valor mensal da RMMG de {formatCurrency(results.rmmgValue)} é aumentado proporcionalmente para {formatCurrency(results.proportionalValue)}.
+                                </span>
+                            )}
+                            {!results.isReduced && !results.isIncreased && (
+                                <span className="block italic text-green-400">
+                                    Nota: Corresponde a uma assistência de tempo inteiro (40 horas), igualando o valor total da RMMG.
+                                </span>
+                            )}
+                        </p>
+                    </div>
+                </section>
+            )}
+        </div>
+    );
+};
+
+// --- Housing Readaptation Calculator ---
+
+interface HousingFormData {
+  workerName: string;
+  accidentDate: string;
+  expenses: string;
+}
+
+const initialHousingFormData: HousingFormData = {
+  workerName: '',
+  accidentDate: '',
+  expenses: '',
+};
+
+interface HousingResults {
+  limit: number;
+  iasValue: number;
+  finalPayout: number;
+  isCapped: boolean;
+}
+
+const HousingReadaptationCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+  const [formData, setFormData] = useState<HousingFormData>(initialHousingFormData);
+  const [results, setResults] = useState<HousingResults | null>(null);
+  const [error, setError] = useState('');
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setFormData(initialHousingFormData);
+    setResults(null);
+    setError('');
+  }, []);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    const accident = new Date(formData.accidentDate);
+    const expensesValue = parseFloat(formData.expenses);
+
+    if (isNaN(accident.getTime()) || isNaN(expensesValue)) {
+      setError('Verifique a data do acidente e o valor das despesas.');
+      return;
+    }
+
+    const year = accident.getFullYear();
+    const ias = IAS_TABLE[year];
+
+    if (!ias) {
+      setError(`O valor do IAS para o ano de ${year} não está disponível (2007-2026).`);
+      return;
+    }
+
+    const limit = 12 * (1.1 * ias);
+    const finalPayout = Math.min(expensesValue, limit);
+    const isCapped = expensesValue > limit;
+
+    setResults({
+      limit,
+      iasValue: ias,
+      finalPayout,
+      isCapped
+    });
+
+  }, [formData]);
+
+  const formatCurrency = (v: number) => v.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+
+  return (
+    <div className="w-full max-w-4xl mx-auto animate-fade-in">
+      <BackButton onBack={onBack} />
+      <header className="text-center mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Readaptação de Habitação</h1>
+        <p className="text-slate-400 mt-2 text-lg">Artigo 68.º - Subsídio para Readaptação</p>
+      </header>
+
+      <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+        <CalculationExplanation title="Artigo 68.º - Readaptação de Habitação">
+          <p>O sinistrado tem direito ao pagamento das despesas suportadas com a readaptação de habitação, necessárias devido à sua incapacidade. O montante é limitado a <strong>12 vezes o valor de 1,1 IAS</strong> (Indexante de Apoios Sociais) vigente à data do acidente.</p>
+        </CalculationExplanation>
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
+            <InputGroup label="Data do Acidente" id="accidentDate" name="accidentDate" type="date" value={formData.accidentDate} onChange={handleInputChange} />
+            <div className="md:col-span-2">
+              <InputGroup label="Despesas de Readaptação (€)" id="expenses" name="expenses" type="number" step="0.01" value={formData.expenses} onChange={handleInputChange} placeholder="Valor total faturado" />
+            </div>
+          </div>
+          {error && <p className="text-red-400 bg-red-900/50 p-3 rounded-lg mt-6 text-center">{error}</p>}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8 pt-6 border-t border-slate-700">
+            <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-all">
+              Calcular Subsídio
+            </button>
+            <button type="button" onClick={handleReset} className="w-full sm:w-auto bg-slate-600 text-slate-200 font-semibold py-3 px-8 rounded-lg hover:bg-slate-500 transition-all">
+              Limpar
+            </button>
+          </div>
+        </form>
+      </main>
+
+      {results && (
+        <section className="mt-10 bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700 animate-fade-in">
+          <h2 className="text-2xl font-bold text-slate-100 text-center mb-6">Resultados do Cálculo</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+            <ResultCard label="Valor das Despesas" value={formatCurrency(parseFloat(formData.expenses))} />
+            <ResultCard label="Limite Legal (IAS)" value={formatCurrency(results.limit)} />
+            <ResultCard label="Montante a Pagar" value={formatCurrency(results.finalPayout)} />
+          </div>
+          <div className="mt-8 pt-6 border-t border-slate-700 bg-slate-900 p-6 rounded-lg text-slate-300 leading-relaxed">
+            <p>
+              Ao sinistrado <strong className="text-slate-100">{formData.workerName}</strong> foi calculado um direito a reembolso de despesas de habitação no valor de <strong className="text-slate-100">{formatCurrency(results.finalPayout)}</strong>.
+            </p>
+            <p className="mt-4 text-sm text-slate-400 italic">
+              O cálculo baseou-se no valor do IAS de {new Date(formData.accidentDate).getFullYear()} ({formatCurrency(results.iasValue)}), fixando o teto máximo em {formatCurrency(results.limit)}.
+              {results.isCapped && (
+                <span className="block mt-2 text-amber-400">
+                  Atenção: As despesas inseridas ({formatCurrency(parseFloat(formData.expenses))}) excedem o limite legal, tendo sido reduzidas para o montante máximo permitido.
+                </span>
+              )}
+            </p>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+};
+
+// --- Professional Rehabilitation Subsidy Calculator ---
+
+interface RehabilitationFormData {
+    workerName: string;
+    startDate: string;
+    endDate: string;
+    monthlyExpenses: string;
+}
+
+const initialRehabilitationFormData: RehabilitationFormData = {
+    workerName: '',
+    startDate: '',
+    endDate: '',
+    monthlyExpenses: '',
+};
+
+interface RehabilitationResults {
+    monthlyLimit: number;
+    appliedMonthlySubsidy: number;
+    iasValue: number;
+    totalValue: number;
+    durationMonths: number;
+    isExceedingLimit: boolean;
+    isCapped: boolean;
+}
+
+const RehabilitationSubsidyCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+    const [formData, setFormData] = useState<RehabilitationFormData>(initialRehabilitationFormData);
+    const [results, setResults] = useState<RehabilitationResults | null>(null);
+    const [error, setError] = useState('');
+
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    }, []);
+
+    const handleReset = useCallback(() => {
+        setFormData(initialRehabilitationFormData);
+        setResults(null);
+        setError('');
+    }, []);
+
+    const handleSubmit = useCallback((e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        const expenses = parseFloat(formData.monthlyExpenses);
+
+        if (isNaN(start.getTime()) || isNaN(expenses)) {
+            setError('Verifique a data de início e o valor das despesas mensais.');
+            return;
+        }
+
+        const year = start.getFullYear();
+        const ias = IAS_TABLE[year];
+
+        if (!ias) {
+            setError(`O valor do IAS para o ano de ${year} não está disponível (2007-2026).`);
+            return;
+        }
+
+        const monthlyLimit = 1.1 * ias;
+        const appliedMonthlySubsidy = Math.min(expenses, monthlyLimit);
+        const isCapped = expenses > monthlyLimit;
+        
+        let totalValue = appliedMonthlySubsidy;
+        let durationMonths = 1;
+        let isExceedingLimit = false;
+
+        if (!isNaN(end.getTime())) {
+            if (end < start) {
+                setError('A data de fim não pode ser anterior à data de início.');
+                return;
+            }
+            const yearsDiff = end.getFullYear() - start.getFullYear();
+            const monthsDiff = end.getMonth() - start.getMonth();
+            durationMonths = (yearsDiff * 12) + monthsDiff + 1;
+            totalValue = durationMonths * appliedMonthlySubsidy;
+            isExceedingLimit = durationMonths > 36;
+        }
+
+        setResults({
+            monthlyLimit,
+            appliedMonthlySubsidy,
+            iasValue: ias,
+            totalValue,
+            durationMonths,
+            isExceedingLimit,
+            isCapped
+        });
+
+    }, [formData]);
+
+    const formatCurrency = (v: number) => v.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+    const formatDate = (date: Date) => date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    return (
+        <div className="w-full max-w-4xl mx-auto animate-fade-in">
+            <BackButton onBack={onBack} />
+            <header className="text-center mb-8">
+                <h1 className="text-3xl sm:text-4xl font-bold text-slate-100">Reabilitação Profissional</h1>
+                <p className="text-slate-400 mt-2 text-lg">Artigo 69.º - Subsídio para Frequência de Acções</p>
+            </header>
+
+            <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
+                <CalculationExplanation title="Artigo 69.º - Reabilitação Profissional">
+                    <p>O subsídio corresponde ao montante das <strong>despesas efetuadas</strong>, mas tem como limite mensal o valor de <strong>1,1 IAS</strong>. É devido a partir do início efetivo da frequência, não podendo exceder <strong>36 meses</strong>, salvo situações excecionais.</p>
+                </CalculationExplanation>
+                <form onSubmit={handleSubmit} noValidate>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <InputGroup label="Nome do Sinistrado" id="workerName" name="workerName" value={formData.workerName} onChange={handleInputChange} placeholder="Nome completo" />
+                        <InputGroup label="Despesas Mensais Efetuadas (€)" id="monthlyExpenses" name="monthlyExpenses" type="number" step="0.01" value={formData.monthlyExpenses} onChange={handleInputChange} placeholder="Ex: 500.00" />
+                        <InputGroup label="Início da Frequência" id="startDate" name="startDate" type="date" value={formData.startDate} onChange={handleInputChange} />
+                        <InputGroup label="Fim da Frequência (Opcional)" id="endDate" name="endDate" type="date" value={formData.endDate} onChange={handleInputChange} />
+                    </div>
+                    {error && <p className="text-red-400 bg-red-900/50 p-3 rounded-lg mt-6 text-center">{error}</p>}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8 pt-6 border-t border-slate-700">
+                        <button type="submit" className="w-full sm:w-auto bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:bg-blue-700 transition-all">
+                            Calcular Subsídio
+                        </button>
+                        <button type="button" onClick={handleReset} className="w-full sm:w-auto bg-slate-600 text-slate-200 font-semibold py-3 px-8 rounded-lg hover:bg-slate-500 transition-all">
+                            Limpar
+                        </button>
+                    </div>
+                </form>
+            </main>
+
+            {results && (
+                <section className="mt-10 bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700 animate-fade-in">
+                    <h2 className="text-2xl font-bold text-slate-100 text-center mb-6">Resultados do Cálculo</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+                        <ResultCard label="Limite Mensal (1,1 IAS)" value={formatCurrency(results.monthlyLimit)} />
+                        <ResultCard label="Subsídio Mensal Aplicado" value={formatCurrency(results.appliedMonthlySubsidy)} />
+                        <ResultCard label="Montante Total" value={formatCurrency(results.totalValue)} />
+                    </div>
+                    <div className="mt-8 pt-6 border-t border-slate-700 bg-slate-900 p-6 rounded-lg text-slate-300 leading-relaxed">
+                        <p>
+                            Fixa-se o subsídio de reabilitação profissional para <strong className="text-slate-100">{formData.workerName}</strong> no valor mensal de <strong className="text-slate-100">{formatCurrency(results.appliedMonthlySubsidy)}</strong>.
+                        </p>
+                        <p className="mt-4 text-sm text-slate-400">
+                            Cálculo com base no IAS de {new Date(formData.startDate).getFullYear()} ({formatCurrency(results.iasValue)}). 
+                            {results.isCapped && <span className="text-amber-400 ml-1">Nota: As despesas excedem o limite de 1,1 IAS, pelo que o valor foi limitado ao teto legal.</span>}
+                        </p>
+                        {results.isExceedingLimit && (
+                            <div className="mt-4 p-3 bg-red-900/30 border border-red-800 rounded text-red-400 flex items-start">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>A duração ({results.durationMonths} meses) excede o limite legal de 36 meses (Artigo 69.º, n.º 2).</span>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            )}
+        </div>
+    );
+};
+
 // --- MAIN APP (ROUTER) ---
 
 type CalculatorInfo = {
@@ -1795,6 +2222,27 @@ const calculators: CalculatorInfo[] = [
     shortTitle: 'Pensões por Morte',
     description: 'Cálculo de pensões de sobrevivência, subsídios e despesas de funeral.',
     component: FatalAccidentCalculator
+  },
+  { 
+    id: 'third-party-assistance', 
+    title: 'Assistência a Terceira Pessoa',
+    shortTitle: 'Artigo 54.º',
+    description: 'Prestação suplementar indexada à retribuição mínima mensal garantida.',
+    component: ThirdPartyAssistanceCalculator
+  },
+  { 
+    id: 'housing-readaptation', 
+    title: 'Readaptação de Habitação',
+    shortTitle: 'Artigo 68.º',
+    description: 'Subsídio para despesas de adaptação da residência do sinistrado.',
+    component: HousingReadaptationCalculator
+  },
+  { 
+    id: 'rehabilitation-professional', 
+    title: 'Reabilitação Profissional',
+    shortTitle: 'Artigo 69.º',
+    description: 'Subsídio para despesas de frequência de acções de reabilitação.',
+    component: RehabilitationSubsidyCalculator
   },
 ];
 
