@@ -1034,6 +1034,8 @@ const HighIncapacitySummaryText: React.FC<HighIncapacitySummaryProps> = ({ worke
     scenarioText = `O cálculo baseou-se no cenário de incapacidade permanente absoluta para todo e qualquer trabalho, utilizando o valor do IAS de ${accidentYear} (${formatCurrency(iasValue)}). A fórmula aplicada foi: 12 x (1,1 x ${formatCurrency(iasValue)}).`;
   } else if (scenario === 'partial_70') {
     scenarioText = `O cálculo baseou-se no cenário de incapacidade permanente parcial de ${incapacityPercentage}%, utilizando o valor do IAS de ${accidentYear} (${formatCurrency(iasValue)}). A fórmula aplicada foi: (${formatCurrency(iasValue)} x 12) x ${incapacityPercentage}% x 1,1.`;
+  } else if (scenario === 'absolute_habitual') {
+    scenarioText = `O cálculo baseou-se no cenário de incapacidade permanente absoluta para o trabalho habitual, com IPP de ${incapacityPercentage}%. Utilizou-se o valor do IAS de ${accidentYear} (${formatCurrency(iasValue)}). O cálculo seguiu a fórmula: [70% de (IAS x 1,1 x 12)] + [IPP% sobre os restantes 30% de (IAS x 1,1 x 12)].`;
   }
 
   return (
@@ -1066,7 +1068,7 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
     setError('');
     setResults(null);
 
-    const { workerName, accidentDate, scenario, residualCapacityPercentage, incapacityPercentage } = formData;
+    const { workerName, accidentDate, scenario, incapacityPercentage } = formData;
 
     if (!workerName || !accidentDate) {
       setError('O nome do sinistrado e a data do acidente são obrigatórios.');
@@ -1088,6 +1090,8 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
 
     let subsidy = 0;
 
+    const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
     if (scenario === 'absolute_total') {
         subsidy = 12 * (1.1 * iasValue);
     } else if (scenario === 'partial_70') {
@@ -1102,12 +1106,23 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
         }
         subsidy = (iasValue * 12) * (incapacity / 100) * 1.1;
     } else if (scenario === 'absolute_habitual') {
-        if (!residualCapacityPercentage) {
-            setError('A capacidade funcional residual é obrigatória para este cenário.');
+        if (!incapacityPercentage) {
+            setError('A IPP fixada é obrigatória para este cenário.');
             return;
         }
-        setError('O cálculo para incapacidade permanente absoluta para o trabalho habitual será implementado em breve.');
-        return;
+        const ipp = parseFloat(incapacityPercentage);
+        if (isNaN(ipp) || ipp < 0 || ipp > 100) {
+            setError('A IPP fixada deve ser um valor numérico entre 0% e 100%.');
+            return;
+        }
+        
+        // Metodologia fornecida pelo utilizador (com arredondamentos intermédios típicos)
+        const val1 = round(iasValue * 1.1);
+        const val2 = round(val1 * 12);
+        const val3 = round(val2 * 0.70);
+        const val4 = round(val2 - val3);
+        const val5 = round(val4 * (ipp / 100));
+        subsidy = val3 + val5;
     }
     
     setResults({ subsidy, iasValue });
@@ -1126,7 +1141,7 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
       </header>
       <main className="bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-700">
         <CalculationExplanation title="Subsídio por Elevada Incapacidade">
-          <p>Este subsídio, regulado pelo Art. 67.º da NLAT, é uma prestação paga de uma só vez. O montante baseia-se no valor do <strong>IAS (Indexante de Apoios Sociais)</strong> à data do acidente. Para incapacidade absoluta total, o valor é de 12 x (1,1 x IAS). Para incapacidade parcial (≥ 70%), o valor é proporcional à incapacidade fixada: (IAS x 12) x IPP% x 1,1.</p>
+          <p>Este subsídio, regulado pelo Art. 67.º da NLAT, é uma prestação paga de uma só vez. O montante baseia-se no valor do <strong>IAS (Indexante de Apoios Sociais)</strong> à data do acidente. Para incapacidade absoluta total, o valor é de 12 x (1,1 x IAS). Para incapacidade habitual, o valor é calculado somando 70% do valor base com a componente proporcional à IPP sobre os restantes 30%.</p>
         </CalculationExplanation>
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1152,7 +1167,7 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
                         <span className="font-semibold block">Incapacidade permanente absoluta para o trabalho habitual</span>
                          {formData.scenario === 'absolute_habitual' && (
                             <div className="mt-3 animate-fade-in">
-                                <InputGroup label="Capacidade Funcional Residual (%)" id="residualCapacityPercentage" name="residualCapacityPercentage" type="number" value={formData.residualCapacityPercentage} onChange={handleInputChange} placeholder="Ex: 25" />
+                                <InputGroup label="IPP Fixada (%)" id="incapacityPercentage" name="incapacityPercentage" type="number" value={formData.incapacityPercentage} onChange={handleInputChange} placeholder="Ex: 15" />
                             </div>
                         )}
                     </label>
@@ -1598,7 +1613,7 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
             {/* Ex-Spouse */}
             <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700">
               <div className="flex items-center space-x-3 mb-4">
-                <input type="checkbox" name="hasExSpouse" checked={formData.hasExExSpouse} onChange={handleInputChange} className="h-4 w-4" id="chkExSpouse" />
+                <input type="checkbox" name="hasExSpouse" checked={formData.hasExSpouse} onChange={handleInputChange} className="h-4 w-4" id="chkExSpouse" />
                 <label htmlFor="chkExSpouse" className="font-semibold text-slate-200">Ex-Cônjuge (Com Alimentos)</label>
               </div>
               {formData.hasExSpouse && (
