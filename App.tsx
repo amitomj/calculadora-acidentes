@@ -3,6 +3,8 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { RATE_TABLE, IAS_TABLE, RMMG_TABLE, PENSION_UPDATE_COEFFICIENTS } from './constants';
 import { numberToWordsPT } from './utils/numberToWordsPT';
 
+const roundValue = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
+
 // --- HELPER COMPONENTS (used by calculators) ---
 
 interface CalculationExplanationProps {
@@ -220,7 +222,7 @@ const PartialPermanentIncapacityCalculator: React.FC<{ onBack: () => void; }> = 
       return;
     }
 
-    const annualPension = remuneration * 0.70 * (incapacity / 100);
+    const annualPension = roundValue(remuneration * 0.70 * (incapacity / 100));
 
     let ageAtDischarge = discharge.getFullYear() - birth.getFullYear();
     const monthDiff = discharge.getMonth() - birth.getMonth();
@@ -242,7 +244,7 @@ const PartialPermanentIncapacityCalculator: React.FC<{ onBack: () => void; }> = 
     
     const rate = RATE_TABLE[ageForRate];
     if (!rate) {
-      setError(`Não foi encontrada uma taxa para a idade calculada de ${ageForRate} anos. Verifique as das.`);
+      setError(`Não foi encontrada uma taxa para a idade calculada de ${ageForRate} anos. Verifique as datas.`);
       return;
     }
 
@@ -259,8 +261,8 @@ const PartialPermanentIncapacityCalculator: React.FC<{ onBack: () => void; }> = 
     if (today >= pensionStartDate) {
       const diffTime = today.getTime() - pensionStartDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      const dailyPension = annualPension / 365;
-      pensionDue = diffDays * dailyPension;
+      const dailyPension = roundValue(annualPension / 365);
+      pensionDue = roundValue(diffDays * dailyPension);
     }
     
     setResults({
@@ -403,7 +405,7 @@ const AbsolutePermanentTotalIncapacityCalculator: React.FC<{ onBack: () => void;
     } else if (dependents === 'two_or_more') {
       pensionFactor = 1.0;
     }
-    const annualPension = remuneration * pensionFactor;
+    const annualPension = roundValue(remuneration * pensionFactor);
 
     let ageAtDischarge = discharge.getFullYear() - birth.getFullYear();
     const monthDiff = discharge.getMonth() - birth.getMonth();
@@ -442,8 +444,8 @@ const AbsolutePermanentTotalIncapacityCalculator: React.FC<{ onBack: () => void;
     if (today >= pensionStartDate) {
       const diffTime = today.getTime() - pensionStartDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      const dailyPension = annualPension / 365;
-      pensionDue = diffDays * dailyPension;
+      const dailyPension = roundValue(annualPension / 365);
+      pensionDue = roundValue(diffDays * dailyPension);
     }
     
     setResults({
@@ -586,7 +588,7 @@ const AbsoluteHabitualWorkIncapacityCalculator: React.FC<{ onBack: () => void; }
     const lowLimit = remuneration * 0.50;
     const difference = highLimit - lowLimit;
     const incapacityFactor = difference * (incapacity / 100);
-    const annualPension = lowLimit + incapacityFactor;
+    const annualPension = roundValue(lowLimit + incapacityFactor);
 
     let ageAtDischarge = discharge.getFullYear() - birth.getFullYear();
     const monthDiff = discharge.getMonth() - birth.getMonth();
@@ -625,8 +627,8 @@ const AbsoluteHabitualWorkIncapacityCalculator: React.FC<{ onBack: () => void; }
     if (today >= pensionStartDate) {
       const diffTime = today.getTime() - pensionStartDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      const dailyPension = annualPension / 365;
-      pensionDue = diffDays * dailyPension;
+      const dailyPension = roundValue(annualPension / 365);
+      pensionDue = roundValue(diffDays * dailyPension);
     }
     
     setResults({
@@ -852,10 +854,10 @@ const TemporaryIncapacityCalculator: React.FC<{ onBack: () => void; }> = ({ onBa
 
       if (period.type === 'absolute') {
           if (days <= 365) {
-              periodCompensation = days * dailyRemuneration * 0.70;
+              periodCompensation = roundValue(days * dailyRemuneration * 0.70);
           } else {
-              const comp70 = 365 * dailyRemuneration * 0.70;
-              const comp75 = (days - 365) * dailyRemuneration * 0.75;
+              const comp70 = roundValue(365 * dailyRemuneration * 0.70);
+              const comp75 = roundValue((days - 365) * dailyRemuneration * 0.75);
               periodCompensation = comp70 + comp75;
           }
       } else if (period.type === 'partial') {
@@ -864,7 +866,7 @@ const TemporaryIncapacityCalculator: React.FC<{ onBack: () => void; }> = ({ onBa
             setError(`A percentagem de incapacidade para o período de ${period.startDate} a ${period.endDate} é inválida. Deve ser um número entre 0 e 100.`);
             return;
           }
-          periodCompensation = dailyRemuneration * (incapacity / 100) * 0.70 * days;
+          periodCompensation = roundValue(dailyRemuneration * (incapacity / 100) * 0.70 * days);
       }
       
       totalCompensation += periodCompensation;
@@ -1090,10 +1092,8 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
 
     let subsidy = 0;
 
-    const round = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
-
     if (scenario === 'absolute_total') {
-        subsidy = 12 * (1.1 * iasValue);
+        subsidy = roundValue(12 * (1.1 * iasValue));
     } else if (scenario === 'partial_70') {
         if (!incapacityPercentage) {
             setError('A incapacidade fixada é obrigatória para este cenário.');
@@ -1104,7 +1104,7 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
             setError('A incapacidade fixada deve ser um valor numérico entre 70% e 100%.');
             return;
         }
-        subsidy = (iasValue * 12) * (incapacity / 100) * 1.1;
+        subsidy = roundValue((iasValue * 12) * (incapacity / 100) * 1.1);
     } else if (scenario === 'absolute_habitual') {
         if (!incapacityPercentage) {
             setError('A IPP fixada é obrigatória para este cenário.');
@@ -1117,11 +1117,11 @@ const HighIncapacitySubsidyCalculator: React.FC<{ onBack: () => void; }> = ({ on
         }
         
         // Metodologia fornecida pelo utilizador (com arredondamentos intermédios típicos)
-        const val1 = round(iasValue * 1.1);
-        const val2 = round(val1 * 12);
-        const val3 = round(val2 * 0.70);
-        const val4 = round(val2 - val3);
-        const val5 = round(val4 * (ipp / 100));
+        const val1 = roundValue(iasValue * 1.1);
+        const val2 = roundValue(val1 * 12);
+        const val3 = roundValue(val2 * 0.70);
+        const val4 = roundValue(val2 - val3);
+        const val5 = roundValue(val4 * (ipp / 100));
         subsidy = val3 + val5;
     }
     
@@ -1276,7 +1276,7 @@ const PensionUpdateCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
     const currentYear = 2026;
     for (let y = year + 1; y <= currentYear; y++) {
       const coeff = PENSION_UPDATE_COEFFICIENTS[y] || 0;
-      currentVal = currentVal * (1 + coeff / 100);
+      currentVal = roundValue(currentVal * (1 + coeff / 100));
       yearlyResults.push({
         year: y,
         coefficient: coeff,
@@ -1476,7 +1476,7 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
       pensions.push({
         name: 'Ex-Cônjuge (Limitado a Alimentos)',
         standardPercentage: 0.30, // Base calculation but will be capped
-        calculatedValue: Math.min(alimentos, R * 0.30)
+        calculatedValue: roundValue(Math.min(alimentos, R * 0.30))
       });
     }
 
@@ -1523,7 +1523,7 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
     
     // Total caps
     const totalPensionBase = formData.agravatedResponsibility ? 1.0 : Math.min(0.80, totalStandardPerc);
-    const finalTotalValue = R * totalPensionBase;
+    const finalTotalValue = roundValue(R * totalPensionBase);
 
     pensions.forEach(p => {
         if (p.name.includes('Ex-Cônjuge')) return; // Already calculated with foods limit
@@ -1531,19 +1531,19 @@ const FatalAccidentCalculator: React.FC<{ onBack: () => void }> = ({ onBack }) =
         // Split proportional to standard percentages
         // Note: For aggravated fault, we split 100% R by weights of Arts 59-61
         const weight = p.standardPercentage / (totalStandardPerc || 1);
-        p.calculatedValue = finalTotalValue * weight;
+        p.calculatedValue = roundValue(finalTotalValue * weight);
     });
 
     // Subsidies
-    const deathSubsidy = 12 * unitIAS;
+    const deathSubsidy = roundValue(12 * unitIAS);
     const funeralCost = parseFloat(formData.funeralExpenses) || 0;
-    const funeralLimit = (formData.isTranslation ? 8 : 4) * unitIAS;
-    const funeralSubsidy = Math.min(funeralCost, funeralLimit);
+    const funeralLimit = roundValue((formData.isTranslation ? 8 : 4) * unitIAS);
+    const funeralSubsidy = roundValue(Math.min(funeralCost, funeralLimit));
 
     // One-offs
     const spousePension = pensions.find(p => p.name.includes('Cônjuge'))?.calculatedValue || 0;
-    const remicaoSpouse = spousePension * 3;
-    const reversaoFAT = pensions.length === 0 ? R * 3 : 0;
+    const remicaoSpouse = roundValue(spousePension * 3);
+    const reversaoFAT = roundValue(pensions.length === 0 ? R * 3 : 0);
 
     setResults({
       iasValue: IAS,
@@ -1793,7 +1793,7 @@ const ThirdPartyAssistanceCalculator: React.FC<{ onBack: () => void }> = ({ onBa
             return;
         }
 
-        const proportionalValue = (hours / 40) * rmmg;
+        const proportionalValue = roundValue((hours / 40) * rmmg);
         
         setResults({
             rmmgValue: rmmg,
@@ -1929,8 +1929,8 @@ const HousingReadaptationCalculator: React.FC<{ onBack: () => void }> = ({ onBac
       return;
     }
 
-    const limit = 12 * (1.1 * ias);
-    const finalPayout = Math.min(expensesValue, limit);
+    const limit = roundValue(12 * (1.1 * ias));
+    const finalPayout = roundValue(Math.min(expensesValue, limit));
     const isCapped = expensesValue > limit;
 
     setResults({
@@ -2066,8 +2066,8 @@ const RehabilitationSubsidyCalculator: React.FC<{ onBack: () => void }> = ({ onB
             return;
         }
 
-        const monthlyLimit = 1.1 * ias;
-        const appliedMonthlySubsidy = Math.min(expenses, monthlyLimit);
+        const monthlyLimit = roundValue(1.1 * ias);
+        const appliedMonthlySubsidy = roundValue(Math.min(expenses, monthlyLimit));
         const isCapped = expenses > monthlyLimit;
         
         let totalValue = appliedMonthlySubsidy;
@@ -2082,7 +2082,7 @@ const RehabilitationSubsidyCalculator: React.FC<{ onBack: () => void }> = ({ onB
             const yearsDiff = end.getFullYear() - start.getFullYear();
             const monthsDiff = end.getMonth() - start.getMonth();
             durationMonths = (yearsDiff * 12) + monthsDiff + 1;
-            totalValue = durationMonths * appliedMonthlySubsidy;
+            totalValue = roundValue(durationMonths * appliedMonthlySubsidy);
             isExceedingLimit = durationMonths > 36;
         }
 
